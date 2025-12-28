@@ -17,15 +17,14 @@ public class Main {
 
     private final static Logger log = LoggerFactory.getLogger(Main.class);
 
-
-    public static final DBusManager dBusManager = new DBusManager();
-
-    public static ShortcutManager shortcutManager = null;
     public static final String TOGGLE_CLICKER_SHORTCUT_ID = "TOGGLE_CLICKER";
     public static final String AUTOCLICK_WHILE_HEALED_SHORTCUT_ID = "AUTOCLICK_WHILE_HEALED";
-    public static RemoteDesktopManager remoteDesktopManager = null;
 
-    public static void main(String[] args) {
+    public final DBusManager dBusManager;
+    public final ShortcutManager shortcutManager;
+    public final RemoteDesktopManager remoteDesktopManager;
+
+    private Main() {
         Thread.currentThread().setName("Main");
         FlatLaf.setup(new FlatDarkLaf());
 
@@ -40,34 +39,63 @@ public class Main {
                     "This application is linux only, i have no clue how you even got it running elsewhere",
                     "WTF?",
                     JOptionPane.ERROR_MESSAGE);
-            return;
+            System.exit(-1);
         }
 
-        initialiseRemoteDesktop();
-        initialiseShortcutManager();
+        this.dBusManager = new DBusManager();
 
-        MainWindow window = new MainWindow();
+        remoteDesktopManager = initialiseRemoteDesktop(dBusManager);
+        shortcutManager = initialiseShortcutManager(dBusManager);
+
+        MainWindow window = new MainWindow(this);
         window.initialise();
 
         Runtime.getRuntime().addShutdownHook(new Thread(dBusManager::close));
-
     }
 
-    private static void initialiseRemoteDesktop() {
-        while (Main.remoteDesktopManager == null) {
-            try {
-                Main.remoteDesktopManager = new RemoteDesktopManager(Main.dBusManager);
-            } catch (RequestFailedException | InterruptedException e) {
-                throw new RuntimeException(e);
-            } catch (UserCanceledException ignored) {
+    public static void main(String[] args) {
+        new Main();
+    }
 
+    private RemoteDesktopManager initialiseRemoteDesktop(DBusManager dBusManager) {
+        RemoteDesktopManager manager = null;
+        try {
+            manager = new RemoteDesktopManager(dBusManager);
+        } catch (RequestFailedException | InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (UserCanceledException ignored) {
+            JOptionPane.showMessageDialog(
+                    null,
+                    """
+                            Request for RemoteDesktop was canceled.
+                            This application requires that permission to send mouse inputs.
+                            You will be prompted again if you decline the application will exit
+                            """,
+                    "Declined Warning",
+                    JOptionPane.WARNING_MESSAGE);
+            try {
+                manager = new RemoteDesktopManager(dBusManager);
+            } catch (InterruptedException | RequestFailedException e) {
+                throw new RuntimeException(e);
+            } catch (UserCanceledException e) {
+                JOptionPane.showMessageDialog(
+                        null,
+                        """
+                                Request for RemoteDesktop was canceled for the second time.
+                                Exiting!
+                                """,
+                        "Declined Exiting",
+                        JOptionPane.ERROR_MESSAGE);
+                System.exit(1);
             }
         }
+        return manager;
     }
 
-    private static void initialiseShortcutManager() {
+    private ShortcutManager initialiseShortcutManager(DBusManager dBusManager) {
+        ShortcutManager manager = null;
         try {
-            shortcutManager = new ShortcutManager(dBusManager,
+            manager = new ShortcutManager(dBusManager,
                     new ShortcutBuilder()
                             .add(AUTOCLICK_WHILE_HEALED_SHORTCUT_ID, "Autoclicks while held", "F5")
                             .add(TOGGLE_CLICKER_SHORTCUT_ID, "Toggles autoclicker", "F6")
@@ -81,7 +109,9 @@ public class Main {
                     "ERROR",
                     JOptionPane.ERROR_MESSAGE);
         }
-        log.info("Shortcuts available: " + (shortcutManager != null));
+        log.info("Shortcuts available: " + (manager != null));
+
+        return manager;
     }
 
 

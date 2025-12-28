@@ -9,6 +9,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class ClickerThread extends Thread {
 
+    private final Main main;
+
     private boolean running = false;
     private boolean shouldPause = false;
     private boolean paused = true;
@@ -20,7 +22,8 @@ public class ClickerThread extends Thread {
     private long msDelay;
     private int nsDelay;
 
-    public ClickerThread() {
+    public ClickerThread(Main main) {
+        this.main = main;
         start();
     }
 
@@ -32,7 +35,7 @@ public class ClickerThread extends Thread {
             try {
                 while (shouldPause || !running) {
                     if (clicked) {
-                        Main.remoteDesktopManager.setMouseButton(button, false);
+                        main.remoteDesktopManager.setMouseButton(button, false);
                         clicked = false;
                     }
 
@@ -50,7 +53,7 @@ public class ClickerThread extends Thread {
             }
 
             try {
-                Main.remoteDesktopManager.setMouseButton(button, !clicked);
+                main.remoteDesktopManager.setMouseButton(button, !clicked);
             } catch (Exception ignored) {}
 
             try {

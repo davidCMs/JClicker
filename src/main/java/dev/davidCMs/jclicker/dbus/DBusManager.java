@@ -4,9 +4,13 @@ import org.freedesktop.dbus.DBusPath;
 import org.freedesktop.dbus.connections.impl.DBusConnection;
 import org.freedesktop.dbus.connections.impl.DBusConnectionBuilder;
 import org.freedesktop.dbus.exceptions.DBusException;
+import org.freedesktop.dbus.interfaces.DBus;
+import org.freedesktop.dbus.interfaces.Properties;
+import org.freedesktop.dbus.types.UInt32;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.swing.*;
 import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,14 +32,64 @@ public class DBusManager implements AutoCloseable {
     public DBusManager() {
         try {
             this.conn = DBusConnectionBuilder.forSessionBus().build();
+        } catch (DBusException e) {
+            throw new RuntimeException(e);
+        }
 
-            this.remoteDesktop = new RemoteDesktop(conn);
+
+        this.remoteDesktop = new RemoteDesktop(conn);
+
+        try {
             this.globalShortcut = conn.getRemoteObject(
                     "org.freedesktop.portal.Desktop",
                     "/org/freedesktop/portal/desktop",
                     GlobalShortcutDef.class
             );
+        } catch (DBusException e) {
+            JOptionPane.showMessageDialog(
+                    null,
+                    """
+                            Failed to get GlobalShortcuts object from dbus
+                            Please make share you have got XDG desktop portal installed
+                            """,
+                    "Cannot initialise GlobalShortcuts",
+                    JOptionPane.ERROR_MESSAGE
+            );
+            throw new RuntimeException("Failed to get GlobalShortcuts");
+        }
 
+        try {
+            Properties properties = conn.getRemoteObject(
+                    "org.freedesktop.portal.Desktop",
+                    "/org/freedesktop/portal/desktop",
+                    Properties.class
+            );
+            UInt32 version = properties.Get("org.freedesktop.portal.GlobalShortcuts", "version");
+            log.info("GlobalShortcuts version: " + version);
+            if (version.intValue() < 1) {
+                JOptionPane.showMessageDialog(
+                        null,
+                        """
+                                Your version of the GlobalShortcuts is to old!
+                                Please update it, if you cant go pester someone who can.
+                                """,
+                        "Portal out of date",
+                        JOptionPane.ERROR_MESSAGE
+                );
+                throw new RuntimeException("Portal out of date");
+            }
+        } catch (DBusException e) {
+            JOptionPane.showMessageDialog(
+                    null,
+                    """
+                            Failed to get GlobalShortcuts properties from dbus
+                            """,
+                    "Cannot initialise GlobalShortcuts",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
+
+        try {
             conn.addSigHandler(
                     Request.Response.class,
                     response -> {
@@ -52,10 +106,10 @@ public class DBusManager implements AutoCloseable {
                         }
                     }
             );
-
         } catch (DBusException e) {
             throw new RuntimeException(e);
         }
+
     }
 
     public void addHandler(DBusPath path, Consumer<Request.Response> consumer) {

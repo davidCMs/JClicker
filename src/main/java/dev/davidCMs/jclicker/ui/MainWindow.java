@@ -22,7 +22,10 @@ import java.awt.event.WindowEvent;
 public class MainWindow extends JFrame {
 
     private static final Logger log = LoggerFactory.getLogger(MainWindow.class);
-    private final ClickerThread thread = new ClickerThread();
+
+    private final Main main;
+
+    private final ClickerThread thread;
 
     private final JLabel active = new JLabel("Stopped");
 
@@ -36,7 +39,10 @@ public class MainWindow extends JFrame {
 
     private final JPanel shortcutsPanel;
 
-    public MainWindow() {
+    public MainWindow(Main main) {
+        this.main = main;
+        thread = new ClickerThread(main);
+
         setTitle("JClicker");
         setSize(800,600);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -217,8 +223,8 @@ public class MainWindow extends JFrame {
 
     public void initialise() {
 
-        if (Main.shortcutManager != null) {
-            for (var shortcutEntry : Main.shortcutManager.shortcuts.entrySet()) {
+        if (main.shortcutManager != null) {
+            for (var shortcutEntry : main.shortcutManager.shortcuts.entrySet()) {
                 final String name = shortcutEntry.getValue().getDescription();
                 final Shortcut shortcut = shortcutEntry.getValue();
                 final JLabel label = new JLabel(shortcut.getTriggerDescription() + " -> " + name);
@@ -242,8 +248,8 @@ public class MainWindow extends JFrame {
         pack();
         //setResizable(false);
 
-        if (Main.shortcutManager != null) {
-            Shortcut f6 = Main.shortcutManager.shortcuts.get(Main.TOGGLE_CLICKER_SHORTCUT_ID);
+        if (main.shortcutManager != null) {
+            Shortcut f6 = main.shortcutManager.shortcuts.get(Main.TOGGLE_CLICKER_SHORTCUT_ID);
             f6.addOnStateChangedListener(bool -> {
                 if (bool) return;
 
@@ -268,7 +274,7 @@ public class MainWindow extends JFrame {
                 });
 
             });
-            Shortcut f5 = Main.shortcutManager.shortcuts.get(Main.AUTOCLICK_WHILE_HEALED_SHORTCUT_ID);
+            Shortcut f5 = main.shortcutManager.shortcuts.get(Main.AUTOCLICK_WHILE_HEALED_SHORTCUT_ID);
             f5.addOnStateChangedListener(pressed -> {
                 if (pressed) {
                     thread.enable();
