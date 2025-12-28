@@ -26,12 +26,14 @@ public class Main {
 
     private Main() {
         Thread.currentThread().setName("Main");
-        FlatLaf.setup(new FlatDarkLaf());
 
+        System.setProperty("flatlaf.uiScale", AppPreferences.getUiScale() + "");
         System.setProperty("flatlaf.useWindowDecorations", "true");
         System.setProperty("flatlaf.experimental.linux.nativeDecorations", "true");
         JFrame.setDefaultLookAndFeelDecorated(true);
         JDialog.setDefaultLookAndFeelDecorated(true);
+
+        FlatLaf.setup(new FlatDarkLaf());
 
         if (!SystemInfo.isLinux) {
             JOptionPane.showMessageDialog(
@@ -47,10 +49,18 @@ public class Main {
         remoteDesktopManager = initialiseRemoteDesktop(dBusManager);
         shortcutManager = initialiseShortcutManager(dBusManager);
 
-        MainWindow window = new MainWindow(this);
-        window.initialise();
+        recreateWindow();
 
         Runtime.getRuntime().addShutdownHook(new Thread(dBusManager::close));
+    }
+
+    public MainWindow mainWindow = null;
+
+    public void recreateWindow() {
+        if (mainWindow != null) mainWindow.dispose();
+        FlatLaf.setup(new FlatDarkLaf());
+        this.mainWindow = new MainWindow(this);
+        mainWindow.initialise();
     }
 
     public static void main(String[] args) {

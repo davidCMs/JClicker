@@ -72,11 +72,11 @@ public class MainWindow extends JFrame {
 
         delay.setLayout(new BoxLayout(delay, BoxLayout.Y_AXIS));
 
-        this.h = setupDelayField( "Hours  ", AppPreferences.getDelayH(),  0, Long.MAX_VALUE, delay);
+        this.h = setupDelayField( "Hours",   AppPreferences.getDelayH(),  0, Long.MAX_VALUE, delay);
         this.m = setupDelayField( "Minutes", AppPreferences.getDelayM(),  0, Long.MAX_VALUE, delay);
         this.s = setupDelayField( "Seconds", AppPreferences.getDelayS(),  0, Long.MAX_VALUE, delay);
-        this.ms = setupDelayField("Micro  ", AppPreferences.getDelayMS(), 0, Long.MAX_VALUE, delay);
-        this.ns = setupDelayField("Nano   ", AppPreferences.getDelayNS(), 0, 999999,    delay); // limited by Thread.sleep()
+        this.ms = setupDelayField("Micro",   AppPreferences.getDelayMS(), 0, Long.MAX_VALUE, delay);
+        this.ns = setupDelayField("Nano",    AppPreferences.getDelayNS(), 0, 999999,    delay); // limited by Thread.sleep()
 
         updateClickerDelay();
 
@@ -99,7 +99,7 @@ public class MainWindow extends JFrame {
 
         c.gridwidth = 1;
         c.gridy = 1;
-        c.weightx = 0;
+        c.weightx = 0.33;
         add(delay, c);
 
         JPanel clickOptions = new JPanel();
@@ -124,6 +124,7 @@ public class MainWindow extends JFrame {
         clickOptions.add(buttonComboBox);
 
         c.gridx = 1;
+        c.weightx = 0.33;
         add(clickOptions, c);
 
         shortcutsPanel = new JPanel();
@@ -131,7 +132,38 @@ public class MainWindow extends JFrame {
         shortcutsPanel.setBorder(createBorder("Shortcuts", 2, 10, 10, 10, 10));
 
         c.gridx = 2;
+        c.weightx = 0.33;
         add(shortcutsPanel, c);
+
+        JPanel ui = new JPanel();
+        ui.setBorder(createBorder("UI", 2, 10 ,10, 10, 10));
+        ui.setLayout(new BoxLayout(ui, BoxLayout.Y_AXIS));
+
+        Box uiScaleBox = Box.createHorizontalBox();
+        JLabel uiScaleText = new JLabel("Scale ");
+        uiScaleText.setAlignmentX(Component.LEFT_ALIGNMENT);
+        uiScaleBox.add(uiScaleText);
+        uiScaleBox.add(Box.createHorizontalStrut(2));
+
+        JSpinner uiScaleSpinner = new JSpinner(new SpinnerNumberModel(
+                AppPreferences.getUiScale(),
+                1,
+                3,
+                0.1
+        ));
+        uiScaleSpinner.setAlignmentX(Component.CENTER_ALIGNMENT);
+        uiScaleSpinner.addChangeListener(e -> {
+            float val = ((Number) uiScaleSpinner.getValue()).floatValue();
+            log.info("Changed ui scale to: " + val);
+            System.setProperty("flatlaf.uiScale", val + "");
+            AppPreferences.setUiScale(val);
+            main.recreateWindow();
+        });
+        uiScaleBox.add(uiScaleSpinner);
+        ui.add(uiScaleBox);
+
+        c.gridy = 2;
+        add(ui, c);
     }
 
     private Border createBorder(String title, int thickness, int top, int left, int bottom, int right) {
@@ -201,22 +233,40 @@ public class MainWindow extends JFrame {
     private static JSpinner setupDelayField(String name, long init, long min, long max, JPanel panel) {
         JPanel innerPanel = new JPanel();
         innerPanel.setLayout(new BoxLayout(innerPanel, BoxLayout.X_AXIS));
+        innerPanel.setBorder(BorderFactory.createEmptyBorder(4, 2, 4, 2));
+        innerPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+
         JSpinner spinner = new JSpinner(
                 new SpinnerNumberModel(init, min, max, 1)
         );
-        //spinner.setMaximumSize(new Dimension(50, 20));
-        innerPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        innerPanel.add(spinner);
-        innerPanel.add(new JLabel(name));
-        panel.add(innerPanel);
-
-        innerPanel.setMaximumSize(innerPanel.getPreferredSize());
         spinner.setAlignmentX(Component.LEFT_ALIGNMENT);
-
+        spinner.setAlignmentY(Component.CENTER_ALIGNMENT);
+        spinner.setMaximumSize(new Dimension(spinner.getPreferredSize().width, Integer.MAX_VALUE));
         JFormattedTextField tf = ((JSpinner.NumberEditor) spinner.getEditor()).getTextField();
-        tf.setColumns(5);
-
+        tf.setColumns(7);
         spinner.setMaximumSize(spinner.getPreferredSize());
+
+
+
+        JLabel label = new JLabel(name);
+        label.setAlignmentX(Component.LEFT_ALIGNMENT);
+        label.setAlignmentY(Component.CENTER_ALIGNMENT);
+        label.setMinimumSize(label.getPreferredSize());
+
+        innerPanel.add(spinner);
+        innerPanel.add(Box.createHorizontalStrut(5));
+        innerPanel.add(label);
+
+        innerPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, innerPanel.getPreferredSize().height));
+
+        panel.add(innerPanel);
+        //panel.add(Box.createHorizontalStrut(2));
+        /*
+        innerPanel.setBorder(BorderFactory.createLineBorder(Color.RED));
+        spinner.setBorder(BorderFactory.createLineBorder(Color.BLUE));
+        tf.setBorder(BorderFactory.createLineBorder(Color.GREEN));
+*/
 
         return spinner;
     }
@@ -241,12 +291,7 @@ public class MainWindow extends JFrame {
         } else
             shortcutsPanel.add(new JLabel("Shortcuts are unavailable ):"));
 
-        System.setProperty("flatlaf.uiScale", "1.5");
-        FlatDarkLaf.setup();
-        FlatLaf.updateUI();
-
         pack();
-        //setResizable(false);
 
         if (main.shortcutManager != null) {
             Shortcut f6 = main.shortcutManager.shortcuts.get(Main.TOGGLE_CLICKER_SHORTCUT_ID);

@@ -15,6 +15,8 @@ public class AppPreferences {
 
     private static final String mouseButtonOrdinalKey = "MOUSE_BUTTON_ORDINAL";
 
+    private static final String uiScaleKey = "UI_SCALE";
+
     public static void setRemoteDesktopToken(String token) {
         prefs.put(remoteDesktopTokenKey, token);
     }
@@ -71,4 +73,13 @@ public class AppPreferences {
     public static int getMouseButtonOrdinal() {
         return prefs.getInt(mouseButtonOrdinalKey, 0);
     }
+
+    public static void setUiScale(float scale) {
+        prefs.putFloat(uiScaleKey, scale);
+    }
+
+    public static float getUiScale() {
+        return prefs.getFloat(uiScaleKey, 1.0f);
+    }
+
 }
