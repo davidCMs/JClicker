@@ -39,6 +39,8 @@ public class MainWindow extends JFrame {
 
     private final JPanel shortcutsPanel;
 
+    private final JButton activate;
+
     public MainWindow(Main main) {
         this.main = main;
         thread = new ClickerThread(main);
@@ -76,7 +78,7 @@ public class MainWindow extends JFrame {
         this.m = setupDelayField( "Minutes", AppPreferences.getDelayM(),  0, Long.MAX_VALUE, delay);
         this.s = setupDelayField( "Seconds", AppPreferences.getDelayS(),  0, Long.MAX_VALUE, delay);
         this.ms = setupDelayField("Micro",   AppPreferences.getDelayMS(), 0, Long.MAX_VALUE, delay);
-        this.ns = setupDelayField("Nano",    AppPreferences.getDelayNS(), 0, 999999,    delay); // limited by Thread.sleep()
+        this.ns = setupDelayField("Nano",    AppPreferences.getDelayNS(), 0, Long.MAX_VALUE, delay);
 
         updateClickerDelay();
 
@@ -135,6 +137,24 @@ public class MainWindow extends JFrame {
         c.weightx = 0.33;
         add(shortcutsPanel, c);
 
+        c.gridy = 2;
+        c.gridx = 0;
+        c.gridwidth = 2;
+        this.activate = new JButton("Start");
+        activate.setForeground(Color.GREEN);
+        activate.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.BLACK, 4),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
+        activate.addActionListener(e -> {
+            if (thread.isPaused()) {
+                start();
+            } else {
+                stop();
+            }
+        });
+        add(activate, c);
+
         JPanel ui = new JPanel();
         ui.setBorder(createBorder("UI", 2, 10 ,10, 10, 10));
         ui.setLayout(new BoxLayout(ui, BoxLayout.Y_AXIS));
@@ -162,7 +182,8 @@ public class MainWindow extends JFrame {
         uiScaleBox.add(uiScaleSpinner);
         ui.add(uiScaleBox);
 
-        c.gridy = 2;
+        c.gridx = 2;
+        c.gridwidth = 1;
         add(ui, c);
     }
 
@@ -216,12 +237,51 @@ public class MainWindow extends JFrame {
         long milis = 0;
         int nanos = 0;
         try {
-            milis += ((Number) h.getValue()).longValue() * 3600000;
-            milis += ((Number) m.getValue()).longValue() * 60000;
-            milis += ((Number) s.getValue()).longValue() * 1000;
-            milis += ((Number) ms.getValue()).longValue();
 
-            nanos = ((Number) ns.getValue()).intValue();
+            long configuredNanos   = ((Number) ns.getValue()).intValue();
+            long configuredMillis  = ((Number) ms.getValue()).intValue();
+            long configuredSeconds = ((Number)  s.getValue()).intValue();
+            long configuredMinutes = ((Number)  m.getValue()).intValue();
+            long configuredHours   = ((Number)  h.getValue()).intValue();
+
+            if (configuredNanos >= 1_000_000) {
+                long ms = configuredNanos / 1_000_000;
+                configuredNanos = configuredNanos % 1_000_000;
+                ns.setValue(configuredNanos);
+                configuredMillis += ms;
+                this.ms.setValue(configuredMillis);
+            }
+
+            if (configuredMillis >= 1_000) {
+                long s = configuredMillis / 1_000;
+                configuredMillis = configuredMillis % 1_000;
+                ms.setValue(configuredMillis);
+                configuredSeconds += s;
+                this.s.setValue(configuredSeconds);
+            }
+
+            if (configuredSeconds >= 60) {
+                long m = configuredSeconds / 60;
+                configuredSeconds = configuredSeconds % 60;
+                s.setValue(configuredSeconds);
+                configuredMinutes += m;
+                this.m.setValue(configuredMinutes);
+            }
+
+            if (configuredMinutes >= 60) {
+                long h = configuredMinutes / 60;
+                configuredMinutes = configuredMinutes % 60;
+                m.setValue(configuredMinutes);
+                configuredHours += h;
+                this.h.setValue(configuredHours);
+            }
+
+            nanos =  (int) configuredNanos;
+            milis +=       configuredMillis;
+            milis +=       configuredSeconds * 1000;
+            milis +=       configuredMinutes * 60000;
+            milis +=       configuredHours   * 3600000;
+
 
             thread.setDelay(milis, nanos);
             log.info("Setting delay to ms: {}, ns: {}", milis, nanos);
@@ -298,37 +358,18 @@ public class MainWindow extends JFrame {
             f6.addOnStateChangedListener(bool -> {
                 if (bool) return;
 
-                boolean nowActive;
-
                 if (thread.isPaused()) {
-                    thread.enable();
-                    nowActive = true;
+                    start();
                 } else {
-                    thread.disable();
-                    nowActive = false;
+                    stop();
                 }
-
-                SwingUtilities.invokeLater(() -> {
-                    if (nowActive) {
-                        active.setText("Running");
-                        active.setForeground(Color.GREEN);
-                    } else {
-                        active.setText("Stopped");
-                        active.setForeground(Color.RED);
-                    }
-                });
-
             });
             Shortcut f5 = main.shortcutManager.shortcuts.get(Main.AUTOCLICK_WHILE_HEALED_SHORTCUT_ID);
             f5.addOnStateChangedListener(pressed -> {
                 if (pressed) {
-                    thread.enable();
-                    active.setText("Running");
-                    active.setForeground(Color.GREEN);
+                    start();
                 } else {
-                    thread.disable();
-                    active.setText("Stopped");
-                    active.setForeground(Color.RED);
+                    stop();
                 }
             });
         }
@@ -336,6 +377,32 @@ public class MainWindow extends JFrame {
         setVisible(true);
     }
 
+    private void start() {
+        if (!thread.isPaused()) return;
 
+        thread.enable();
+
+        SwingUtilities.invokeLater(() -> {
+            active.setText("Running");
+            active.setForeground(Color.GREEN);
+
+            activate.setText("Stop");
+            activate.setForeground(Color.RED);
+        });
+    }
+
+    private void stop() {
+        if (thread.isPaused()) return;
+
+        thread.disable();
+
+        SwingUtilities.invokeLater(() -> {
+            active.setText("Stopped");
+            active.setForeground(Color.RED);
+
+            activate.setText("Start");
+            activate.setForeground(Color.GREEN);
+        });
+    }
 
 }
