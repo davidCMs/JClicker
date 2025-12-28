@@ -1,6 +1,9 @@
+import de.undercouch.gradle.tasks.download.Download
+
 plugins {
     id 'java'
     id 'com.gradleup.shadow' version '9.3.0'
+    id "de.undercouch.download" version "5.6.0"
     id 'application'
 }
 
@@ -44,63 +47,143 @@ tasks.named("shadowJar") {
 }
 
 def iconLocation = file("src/main/resources/icon.png")
+def appImageToolDir = rootProject.layout.buildDirectory.dir("appimagetool").get();
+def appImageTool_x86_64Name = "appimagetool-x86_64.AppImage";
 
-tasks.register('prepBuildAppDir', Copy) {
-    from("AppDir")
-    from(iconLocation)
-    into(rootProject.layout.buildDirectory.dir("AppDir"))
+tasks.register("chmodAppImageTool_x86_64", Exec) {
+    commandLine "chmod", "+x", "${appImageToolDir.toString()}/$appImageTool_x86_64Name"
+}
+
+tasks.register("downloadAppImageTool_x86_64", Download) {
+    src "https://github.com/AppImage/appimagetool/releases/download/continuous/$appImageTool_x86_64Name"
+    dest appImageToolDir
+    overwrite false;
+    onlyIfModified true;
+
+    finalizedBy(chmodAppImageTool_x86_64)
+}
+
+def appImageTool_aarch64Name = "appimagetool-aarch64.AppImage";
+
+tasks.register("chmodAppImageTool_aarch64", Exec) {
+    commandLine "chmod", "+x", "${appImageToolDir.toString()}/$appImageTool_aarch64Name"
+}
+
+tasks.register("downloadAppImageTool_aarch64", Download) {
+    src "https://github.com/AppImage/appimagetool/releases/download/continuous/$appImageTool_aarch64Name"
+    dest appImageToolDir
+    overwrite false;
+    onlyIfModified true;
+
+    finalizedBy(chmodAppImageTool_aarch64)
+}
+
+tasks.register('prepBuildAppDir') {
+    def output = rootProject.layout.buildDirectory.dir("AppDir").get().asFile
+    inputs.files(fileTree("AppDir"))
+    outputs.files(fileTree(output))
+
+    copy {
+        if (output.exists()) delete(output)
+        from("AppDir")
+        from(iconLocation)
+        into(output)
+    }
 }
 
 tasks.register("jPackage", Exec) {
     dependsOn shadowJar
     dependsOn prepBuildAppDir
 
-    outputs.upToDateWhen { false }
-    outputs.cacheIf { false }
-    commandLine(
-            "jpackage",
-            "--input", "build/libs",
-            "--name", project.name,
-            "--main-jar", project.name + "-" + version + "-all.jar",
-            "--main-class", "dev.davidCMs.jclicker.Main",
-            "--type", "app-image",
-            "--icon", iconLocation,
-            "--dest", rootProject.layout.buildDirectory.dir("AppDir").get().asFile.toString()
+    def dest = rootProject.layout.buildDirectory.get().asFile
+    def inputLibs = layout.buildDirectory.dir("libs").get().asFile
+    def produced = new File(dest, project.name)
+    def renamed  = new File(dest, "jPackage")
+
+    inputs.files(fileTree(inputLibs))
+    inputs.file(iconLocation)
+    outputs.dir(dest)
+
+    doFirst {
+        delete(renamed)
+    }
+
+    commandLine("bash", "-c", """
+            jpackage \\
+            --input $inputLibs \\
+            --name $project.name \\
+            --main-jar $project.name-$version-all.jar \\
+            --main-class dev.davidCMs.jclicker.Main \\
+            --type app-image \\
+            --icon $iconLocation \\
+            --dest ${dest.toString()}
+            \n
+            chmod -R u+w $produced
+            \n
+            mv $produced $renamed
+            """
+
     )
-    finalizedBy(mergeJPackageToUsr)
 }
 
-tasks.register("mergeJPackageToUsr") {
+tasks.register("mergeJPackageIntoAppDir") {
     dependsOn(prepBuildAppDir)
+    dependsOn(jPackage)
     doLast {
-        def original = layout.buildDirectory.dir("AppDir/${project.name}").get().asFile
+        def origin = layout.buildDirectory.dir("jPackage").get().asFile
         def destination = layout.buildDirectory.dir("AppDir/usr").get().asFile
 
-        providers.exec {
-            commandLine "chmod", "-R", "u+w", destination.absolutePath
-        }
-
         copy {
-            from original
+            from origin
             into destination
         }
-        delete(original)
     }
 }
 
 tasks.register("buildAppImage-x86_64", Exec) {
-    dependsOn(jPackage)
-    doFirst {
-        def outDir = rootProject.layout.buildDirectory.dir("appimage/").get().asFile
-        outDir.mkdirs()
-        println("File will be output at $outDir")
+    dependsOn(mergeJPackageIntoAppDir)
+    dependsOn(downloadAppImageTool_x86_64)
 
-        def outFile = file(outDir.toString() + "/$project.name-x86_64.AppImage");
+    def outDir = rootProject.layout.buildDirectory.dir("appimage/").get().asFile
+    outDir.mkdirs()
+    def appDir = rootProject.layout.buildDirectory.dir("AppDir").get().asFile
+    def outFile = file(outDir.toString() + "/$project.name-x86_64.AppImage");
+
+    inputs.files(fileTree(appDir))
+    outputs.file(outFile)
+
+    doFirst {
+
         if (outFile.exists()) outFile.delete()
 
         commandLine(
-                "./appimagetool-x86_64.appimage",
-                rootProject.layout.buildDirectory.dir("AppDir").get().asFile.toString(),
+                "${appImageToolDir.toString()}/$appImageTool_x86_64Name",
+                appDir.toString(),
+                outFile.toString()
+        )
+
+    }
+}
+
+tasks.register("buildAppImage-aarch64", Exec) {
+    dependsOn(mergeJPackageIntoAppDir)
+    dependsOn(downloadAppImageTool_aarch64)
+
+    def outDir = rootProject.layout.buildDirectory.dir("appimage/").get().asFile
+    outDir.mkdirs()
+    def appDir = rootProject.layout.buildDirectory.dir("AppDir").get().asFile
+    def outFile = file(outDir.toString() + "/$project.name-aarch64.AppImage");
+
+    inputs.files(fileTree(appDir))
+    outputs.file(outFile)
+
+    doFirst {
+
+        if (outFile.exists()) outFile.delete()
+
+        commandLine(
+                "${appImageToolDir.toString()}/$appImageTool_aarch64Name",
+                appDir.toString(),
                 outFile.toString()
         )
 

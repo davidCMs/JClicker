@@ -1,8 +1,0 @@
-#!/usr/bin/env xdg-open
-[Desktop Entry]
-Name=JClicker
-Exec=bin/JClicker
-Icon=icon
-Type=Application
-Categories=Utility;
-Terminal=false

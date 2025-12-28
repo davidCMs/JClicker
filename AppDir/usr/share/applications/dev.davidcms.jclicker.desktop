@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+
+Name=JClicker
+Comment=DBus based autoclicker for linux written in java
+Categories=Utility;Java;
+
+Icon=icon
+Exec=JClicker
+Terminal=false

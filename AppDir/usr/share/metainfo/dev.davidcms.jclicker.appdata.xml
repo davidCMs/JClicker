@@ -2,7 +2,12 @@
 <component type="desktop-application">
     <id>dev.davidcms.jclicker</id>
 
-    <url type="homepage">https://github.com/davidcms/JClicker</url>
+    <url type="homepage">https://github.com/davidCMs/JClicker</url>
+    <content_rating type="oars-1.1"/>
+
+    <developer id="dev.davidcms">
+        <name>David</name>
+    </developer>
 
     <name>JClicker</name>
     <summary>XDG Desktop Portal based autoclicker for Linux written in java</summary>
@@ -10,14 +15,9 @@
     <metadata_license>MIT</metadata_license>
     <project_license>MIT</project_license>
 
-    <supports>
-        <control>pointing</control>
-        <control>keyboard</control>
-    </supports>
-
     <description>
         <p>
-            Linux native autoclicker that was written because I wanted to play cookie clicker but the only other autoclicker I found did not have global shortcuts.
+            Linux native autoclicker that was written because i wanted to play cookie clicker but the only other autoclicker i found did not have global shortcuts.
         </p>
         <p>
             Features: Global shotrcuts. Configurable delay (Hours, Minutes, Seconds, Milliseconds, Nanoseconds). Can click every button on the mouse including back and forwards.
@@ -27,5 +27,5 @@
         </p>
     </description>
 
-    <launchable type="desktop-id">JClicker.desktop</launchable>
+    <launchable type="desktop-id">dev.davidcms.jclicker.desktop</launchable>
 </component>
