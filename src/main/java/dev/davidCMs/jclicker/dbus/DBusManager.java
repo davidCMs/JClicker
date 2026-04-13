@@ -36,6 +36,7 @@ public class DBusManager implements AutoCloseable {
             throw new RuntimeException(e);
         }
 
+        Runtime.getRuntime().addShutdownHook(new Thread(this::close));
 
         this.remoteDesktop = new RemoteDesktop(conn);
 

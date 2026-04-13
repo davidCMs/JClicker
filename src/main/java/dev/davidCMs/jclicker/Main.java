@@ -24,7 +24,7 @@ public class Main {
     public final ShortcutManager shortcutManager;
     public final RemoteDesktopManager remoteDesktopManager;
 
-    private Main() {
+    private Main(String[] args) {
         Thread.currentThread().setName("Main");
 
         System.setProperty("flatlaf.uiScale", AppPreferences.getUiScale() + "");
@@ -51,7 +51,7 @@ public class Main {
 
         recreateWindow();
 
-        Runtime.getRuntime().addShutdownHook(new Thread(dBusManager::close));
+
     }
 
     public MainWindow mainWindow = null;
@@ -64,7 +64,7 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        new Main();
+        new Main(args);
     }
 
     private RemoteDesktopManager initialiseRemoteDesktop(DBusManager dBusManager) {
