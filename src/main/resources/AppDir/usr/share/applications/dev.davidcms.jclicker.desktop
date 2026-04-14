@@ -1,3 +1,4 @@
+#!/usr/bin/env xdg-open
 [Desktop Entry]
 Version=1.0
 Type=Application
@@ -6,6 +7,6 @@ Name=JClicker
 Comment=DBus based autoclicker for linux written in java
 Categories=Utility;Java;
 
-Icon=icon
+Icon=dev.davidcms.jclicker
 Exec=JClicker
 Terminal=false

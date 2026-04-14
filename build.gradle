@@ -21,8 +21,8 @@ dependencies {
     implementation 'com.github.hypfvieh:dbus-java-core:5.2.0'
     implementation 'com.github.hypfvieh:dbus-java-transport-junixsocket:5.2.0'
 
-    implementation group: 'org.slf4j', name: 'slf4j-api', version: '2.0.17'
-    implementation group: 'org.tinylog', name: 'tinylog-impl', version: '2.8.0-M1'
+    implementation "org.slf4j:slf4j-api:2.0.17"
+    implementation "org.tinylog:tinylog-impl:2.8.0-M1"
     implementation 'org.tinylog:slf4j-tinylog:2.8.0-M1'
 
 }
@@ -43,7 +43,6 @@ tasks.named("shadowJar") {
     }
 }
 
-def iconLocation = file("src/main/resources/icon.svg")
 def appImageToolDir = rootProject.layout.buildDirectory.dir("appimagetool").get();
 def appImageTool_x86_64Name = "appimagetool-x86_64.AppImage";
 
@@ -77,34 +76,14 @@ tasks.register("downloadAppImageTool_aarch64", Download) {
 
 tasks.register('prepBuildAppDir') {
     def output = rootProject.layout.buildDirectory.dir("AppDir").get().asFile
-    inputs.files(fileTree("AppDir"))
+    inputs.files(fileTree("src/main/resources/AppDir"))
     outputs.files(fileTree(output))
 
     copy {
         if (output.exists()) delete(output)
-        from("AppDir")
-        from(iconLocation)
+        from("src/main/resources/AppDir")
         into(output)
     }
-
-
-    def iconDest = new File(output, "usr/share/icons/hicolor/scalable/apps")
-    iconDest.mkdirs()
-    copy {
-        from iconLocation
-        into iconDest
-        rename { "dev.davidcms.jclicker.svg" }
-    }
-}
-
-tasks.register('symlinkIcon', Exec) {
-    workingDir rootProject.layout.buildDirectory.dir("AppDir")
-    def icon = new File("usr/share/icons/hicolor/scalable/apps/dev.davidcms.jclicker.svg")
-
-    commandLine 'ln', '-sf', icon, './icon.svg'
-
-
-    (prepBuildAppDir)
 }
 
 tasks.register("jPackage", Exec) {
@@ -117,7 +96,7 @@ tasks.register("jPackage", Exec) {
     def renamed  = new File(dest, "jPackage")
 
     inputs.files(fileTree(inputLibs))
-    inputs.file(iconLocation)
+    inputs.files(fileTree("src"))
     outputs.dir(dest)
 
     doFirst {
@@ -158,7 +137,6 @@ tasks.register("mergeJPackageIntoAppDir") {
 tasks.register("buildAppImage-x86_64", Exec) {
     dependsOn(mergeJPackageIntoAppDir)
     dependsOn(downloadAppImageTool_x86_64)
-    dependsOn(symlinkIcon)
 
     def outDir = rootProject.layout.buildDirectory.dir("appimage/").get().asFile
     outDir.mkdirs()
@@ -179,12 +157,12 @@ tasks.register("buildAppImage-x86_64", Exec) {
         )
 
     }
+
 }
 
 tasks.register("buildAppImage-aarch64", Exec) {
     dependsOn(mergeJPackageIntoAppDir)
     dependsOn(downloadAppImageTool_aarch64)
-    dependsOn(symlinkIcon)
 
     def outDir = rootProject.layout.buildDirectory.dir("appimage/").get().asFile
     outDir.mkdirs()
