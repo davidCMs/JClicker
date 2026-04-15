@@ -1,10 +1,10 @@
 package dev.davidCMs.jclicker.dbus;
 
+import dev.davidCMs.jclicker.dbus.statusnotifier.StatusNotifierWatcherDef;
 import org.freedesktop.dbus.DBusPath;
 import org.freedesktop.dbus.connections.impl.DBusConnection;
 import org.freedesktop.dbus.connections.impl.DBusConnectionBuilder;
 import org.freedesktop.dbus.exceptions.DBusException;
-import org.freedesktop.dbus.interfaces.DBus;
 import org.freedesktop.dbus.interfaces.Properties;
 import org.freedesktop.dbus.types.UInt32;
 import org.slf4j.Logger;
@@ -22,9 +22,12 @@ import java.util.function.Consumer;
 public class DBusManager implements AutoCloseable {
     private final static Logger log = LoggerFactory.getLogger(DBusManager.class);
 
+    public static final String statusNotifierItemBusName = "org.freedesktop.StatusNotifierItem-" + ProcessHandle.current().pid();
+
     public final DBusConnection conn;
     public final RemoteDesktop remoteDesktop;
     public final GlobalShortcutDef globalShortcut;
+    public final StatusNotifierWatcherDef statusNotifierWatcher;
 
     private final ConcurrentHashMap<String, Request.Response> mapResponses = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Consumer<Request.Response>> mapHandlers = new ConcurrentHashMap<>();
@@ -37,6 +40,26 @@ public class DBusManager implements AutoCloseable {
         }
 
         Runtime.getRuntime().addShutdownHook(new Thread(this::close));
+
+
+        try {
+            conn.requestBusName(statusNotifierItemBusName);
+        } catch (DBusException e) {
+            log.error("Failed to request status notifier item bus name from dbus, tray icon will not be available");
+        }
+
+        StatusNotifierWatcherDef statusNotifierWatcher = null;
+        try {
+            statusNotifierWatcher = conn.getRemoteObject(
+                    "org.kde.StatusNotifierWatcher",
+                    "/StatusNotifierWatcher",
+                    StatusNotifierWatcherDef.class
+            );
+        } catch (DBusException e) {
+            log.error("Failed to get org.kde.StatusNotifierWatcher from dbus, tray icon will not be available");
+        }
+
+        this.statusNotifierWatcher = statusNotifierWatcher;
 
         this.remoteDesktop = new RemoteDesktop(conn);
 

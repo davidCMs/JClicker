@@ -4,6 +4,7 @@ import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.util.SystemInfo;
 import dev.davidCMs.jclicker.dbus.DBusManager;
+import dev.davidCMs.jclicker.dbus.statusnotifier.*;
 import dev.davidCMs.jclicker.exceptions.RequestFailedException;
 import dev.davidCMs.jclicker.exceptions.UserCanceledException;
 import dev.davidCMs.jclicker.ui.MainWindow;
@@ -26,6 +27,8 @@ public class Main {
 
     private Main(String[] args) {
         Thread.currentThread().setName("Main");
+        System.setProperty("awt.toolkit", "sun.awt.wl.WLToolkit");
+        System.setProperty("awt.toolkit.name", "WLToolkit");
 
         System.setProperty("flatlaf.uiScale", AppPreferences.getUiScale() + "");
         System.setProperty("flatlaf.useWindowDecorations", "true");
@@ -51,6 +54,25 @@ public class Main {
 
         recreateWindow();
 
+
+
+        StatusNotifierItemBuilder builder = new StatusNotifierItemBuilder()
+                .setCategory(Category.ApplicationStatus)
+                .setId("jclicker")
+                .setTitle("JClicker")
+                .setStatus(Status.Active)
+                .setIconThemePath("/home/davidcms/IdeaProjects/JClicker/src/main/resources/AppDir/usr/share/icons")
+                .setIconName("dev.davidcms.jclicker")
+                .setToolTip(new ToolTip("dev.davidcms.jclicker", "JClicker", "idle"))
+                .setMenuItem(false)
+                .setOnContextMenu((x, y) -> log.info("Context menu ({}, {})", x, y))
+                .setOnActivate((x, y) -> {
+                    log.info("Activate ({}, {})", x, y);
+                })
+                .setOnSecondaryActivate((x, y) -> log.info("SecondaryActivate ({}, {})", x, y))
+                .setOnScroll(((delta, direction) -> log.info("Scroll {}, for {}", direction, delta)));
+
+        AbstractStatusNotifierItem statusNotifier = builder.build(dBusManager);
 
     }
 
